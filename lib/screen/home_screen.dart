@@ -4,6 +4,7 @@ import '../screen/Token_create_screen.dart';
 import 'account_list_screen.dart';
 import '../screen/account_management_screen.dart';
 import '../screen/token_balance.dart';
+import '../screen/account_create.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -33,6 +34,18 @@ class HomeScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => TokenCreateScreen()),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildHomeButton(
+                context,
+                text: '회원 가입',
+                icon: Icons.person,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => SignupScreen()),
                   );
                 },
               ),

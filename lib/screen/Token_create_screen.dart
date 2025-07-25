@@ -29,6 +29,7 @@ class _TokenCreateScreenState extends State<TokenCreateScreen> {
       _status = "";
     });
 
+    //공백 제거
     final chain = _chainController.text.trim();
     final owner = _ownerAddrController.text.trim();
     final pkey = _ownerPkeyController.text.trim();
