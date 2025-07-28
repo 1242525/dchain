@@ -5,6 +5,9 @@ import 'account_list_screen.dart';
 import '../screen/account_management_screen.dart';
 import '../screen/token_balance.dart';
 import '../screen/account_create.dart';
+import '../screen/token_burn_screen.dart';
+import '../screen/privateKey_screen.dart';
+import '../screen/publickey_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -81,6 +84,38 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 20),
               _buildHomeButton(
                 context,
+                text: '계정 리스트',
+                icon: Icons.list,
+                onPressed: () async {
+                  // 필요하다면 async 작업 수행
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AccountListScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildHomeButton(
+                context,
+                text: '공개키+개인키 찾기',
+                icon: Icons.key,
+                onPressed: () async {
+                  // 필요하다면 async 작업 수행
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PublickeyScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              /*
+              const SizedBox(height: 20),
+              _buildHomeButton(
+                context,
                 text: '계정 리스트 + 일괄 지급',
                 icon: Icons.group,
                 onPressed: () async {
@@ -107,6 +142,40 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
               ),
+
+
+              const SizedBox(height: 20),
+              _buildHomeButton(
+                context,
+                text: '토큰 소각하기',
+                icon: Icons.group,
+                onPressed: () async {
+                  final tokenId = await PrefsHelper.getTokenId();
+                  final contract = await PrefsHelper.getContractAddress();
+                  final chain = await PrefsHelper.getChainName();
+
+                  if (tokenId == null || contract == null || chain == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('먼저 토큰을 생성해주세요')),
+                    );
+                    return;
+                  }
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AccountListScreen(
+                        token: tokenId,
+                        chainName: chain,
+                        contractAddress: contract,
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+               */
+
               const SizedBox(height: 20),
               _buildHomeButton(
                 context,

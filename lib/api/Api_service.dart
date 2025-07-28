@@ -9,16 +9,12 @@ class ApiService {
   static final String chainName = dotenv.env['CHAIN_NAME'] ?? 'dchain';
 
   // 계정 생성 API
-  Future<String?> fetchKeyPair({
-    required String chainName,
-  }) async {
-    final url = Uri.parse('$baseUrl/com/acc_create'); // 실제 API 경로
+  Future<String?> fetchKeyPair() async {
+    final url = Uri.parse('http://220.149.235.79:5000/acc/create'); // 실제 API 경로
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        "token": token,
-        "chain": chainName,
       }),
     );
 
@@ -28,6 +24,62 @@ class ApiService {
       return null;
     }
   }
+
+  //계정 리스트 api
+  Future<String?> fetchAccountList() async {
+    final url = Uri.parse('http://220.149.235.79:5000/acc/get_list'); // 실제 API 경로
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return response.body; // JSON 문자열 그대로 리턴
+    } else {
+      return null;
+    }
+  }
+
+  //개인키 반환
+  Future<Map<String, dynamic>?> fetchPrivatekey({
+    required String ownerAddr,
+  }) async {
+    final url = Uri.parse(
+        'http://220.149.235.79:5000/acc/get_private_key'); // 실제 API 경로
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "address": ownerAddr,
+      }),
+    );
+
+
+    final json = jsonDecode(response.body);
+    return json;
+
+
+  }
+
+  // 공개키 반환
+  Future<Map<String, dynamic>?> fetchPublickey({
+    required String ownerAddr,
+}
+      ) async {
+    final url = Uri.parse('http://220.149.235.79:5000/acc/get_public_key');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "address": ownerAddr,
+      }),
+    );
+    final json = jsonDecode(response.body);
+    return json;
+    }
+
 
   // 토큰 전송
   Future<Map<String, dynamic>?> transferToken({
@@ -183,4 +235,42 @@ class ApiService {
 
     return null;
   }
+
+  Future<Map<String, dynamic>?> fetchTokenBurn({
+    required String chainName,
+    required String contractAddress,
+    required String holderAddr,
+    required String holderPkey,
+    required String amount,
+  }) async {
+    final url = Uri.parse('$baseUrl/token/burn');
+    final body = jsonEncode({
+      "token": token,  // API 인증 토큰 (dotenv에서 읽은 전역변수)
+      "chain": chainName,
+      "cont_addr": contractAddress,
+      "holder": holderAddr,
+      "holder_pkey": holderPkey,
+      "amount": amount,
+    });
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    print('📥 API 응답 상태코드: ${response.statusCode}');
+    print('📥 API 응답 본문: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      return {
+        'error': '요청 실패',
+        'status': response.statusCode,
+        'body': response.body,
+      };
+    }
+  }
+
 }

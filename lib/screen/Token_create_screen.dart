@@ -22,6 +22,8 @@ class _TokenCreateScreenState extends State<TokenCreateScreen> {
 
   bool _isLoading = false;
   String _status = "";
+  String _mintedAmount = "";
+
 
   Future<void> _createToken() async {
     setState(() {
@@ -91,16 +93,19 @@ class _TokenCreateScreenState extends State<TokenCreateScreen> {
 
     setState(() {
       _status = "✅ 생성 및 발행 성공!";
+      _mintedAmount = supply;
       _isLoading = false;
     });
 
-    if (mounted) {
+    /*if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),
             (route) => false,
       );
     }
+
+     */
   }
 
   //⬇️ 공통 TextField 디자인
@@ -133,25 +138,50 @@ class _TokenCreateScreenState extends State<TokenCreateScreen> {
 
   //⬇️ 공통 버튼 위젯
   Widget _buildActionButton() {
-    return Center(
-      child: ElevatedButton.icon(
-        onPressed: _isLoading ? null : _createToken,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.indigoAccent,
-          foregroundColor: Colors.white,
-          minimumSize: const Size(160, 50),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: _isLoading ? null : _createToken,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigoAccent,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(160, 50),
+            ),
+            icon: _isLoading
+                ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            )
+                : const Icon(Icons.add_circle_outline),
+            label: Text(_isLoading ? '처리중...' : '토큰 생성 및 발행'),
+          ),
         ),
-        icon: _isLoading
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-        )
-            : const Icon(Icons.add_circle_outline),
-        label: Text(_isLoading ? '처리중...' : '토큰 생성 및 발행'),
-      ),
+        const SizedBox(height: 16),
+        if (_status.isNotEmpty)
+          Text(
+            _status,
+            style: TextStyle(
+              color: _status.startsWith("✅") ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        if (_mintedAmount.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              "발행된 잔액: $_mintedAmount 토큰",
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
+            ),
+          ),
+      ],
     );
   }
+
 
   @override
   void dispose() {
@@ -186,14 +216,7 @@ class _TokenCreateScreenState extends State<TokenCreateScreen> {
             const SizedBox(height: 30),
             _buildActionButton(),
             const SizedBox(height: 24),
-            if (_status.isNotEmpty)
-              Text(
-                _status,
-                style: TextStyle(
-                  color: _status.contains('성공') ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            
           ],
         ),
       ),

@@ -13,8 +13,7 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _tokenController = TextEditingController();
-  final TextEditingController _chainController = TextEditingController(text: 'dchain');
+
 
   Map<String, dynamic>? _keyPairData;
   bool _isLoading = false;
@@ -33,9 +32,14 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     final api = ApiService();
-    final result = await api.fetchKeyPair(
-      chainName: _chainController.text.trim(),
-    );
+    final result = await api.fetchKeyPair();
+    if (result != null) {
+      final data = jsonDecode(result) as Map<String, dynamic>;
+      setState(() {
+        _keyPairData = data;
+      });
+    }
+
 
 
     setState(() {
@@ -58,7 +62,7 @@ class _SignupScreenState extends State<SignupScreen> {
             html.Url.revokeObjectUrl(url);
 
           } else {
-            _error = '키 페어 데이터를 찾을 수 없습니다.';
+            _error = '';
           }
         } catch (e) {
           _error = 'JSON 파싱 오류: $e';
@@ -90,11 +94,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   @override
-  void dispose() {
-    _tokenController.dispose();
-    _chainController.dispose();
-    super.dispose();
-  }
+
 
 
 
@@ -116,35 +116,6 @@ class _SignupScreenState extends State<SignupScreen> {
               key: _formKey,
               child: Column(
                 children: [
-                  TextFormField(
-                    controller: _tokenController,
-                    decoration: InputDecoration(
-                      labelText: '토큰',
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: primaryColor, width: 2),
-                      ),
-                      labelStyle: TextStyle(color: primaryColor.withOpacity(0.7)),
-                    ),
-                    validator: (value) => value == null || value.isEmpty ? '토큰을 입력하세요.' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _chainController,
-                    decoration: InputDecoration(
-                      labelText: '체인명',
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: primaryColor, width: 2),
-                      ),
-                      labelStyle: TextStyle(color: primaryColor.withOpacity(0.7)),
-                    ),
-                    validator: (value) => value == null || value.isEmpty ? '체인명을 입력하세요.' : null,
-                  ),
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
@@ -167,6 +138,15 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  if (_error != null)
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  if (_keyPairData != null) ...[
+                    _buildCard('주소', _keyPairData!['address'] ?? '-'),
+                  ],
                 ],
               ),
             ),
