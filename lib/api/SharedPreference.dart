@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+/*import 'package:shared_preferences/shared_preferences.dart';
 
 class PrefsHelper {
   // 토큰 관련 정보 저장
@@ -42,3 +42,5 @@ class PrefsHelper {
     return prefs.getString('chainName');
   }
 }
+
+ */

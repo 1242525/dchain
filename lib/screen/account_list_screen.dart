@@ -27,7 +27,6 @@ class _AccountListScreenState extends State<AccountListScreen> {
       if (result == null) throw Exception("API 응답이 없습니다.");
 
       final Map<String, dynamic> jsonMap = jsonDecode(result);
-      // 숫자 키를 가진 Map이므로 values만 추출해 List<String> 생성
       final List<String> accounts = jsonMap.values.map((e) => e.toString()).toList();
 
       setState(() {

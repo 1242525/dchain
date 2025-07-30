@@ -1,254 +1,170 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../Api/Api_service.dart';
-import '../screen/token_balance.dart';
+import '../api/Api_service.dart';
+
 
 class TokenTransferScreen extends StatefulWidget {
-  final String chainName;
-  final String contractAddress;
-  final String senderAddress;
-  final String senderPrivateKey;
 
-  const TokenTransferScreen({
-    Key? key,
-    required this.chainName,
-    required this.contractAddress,
-    required this.senderAddress,
-    required this.senderPrivateKey,
-  }) : super(key: key);
 
   @override
   State<TokenTransferScreen> createState() => _TokenTransferScreenState();
 }
 
 class _TokenTransferScreenState extends State<TokenTransferScreen> {
-  final ApiService apiService = ApiService();
 
+  final _contractAdressController = TextEditingController();
+  final _senderController = TextEditingController();
+  final _senderPrivatekeyController = TextEditingController();
+  final _recieverController = TextEditingController();
+  final _amountController = TextEditingController();
+
+  Map<String, dynamic>?_transferTokenData;
   bool _isLoading = false;
-  String _statusMessage = "";
+  String? _error;
 
-  // 사용자의 토큰 입력 대신 .env 토큰 사용 권장
-  // 초기값은 .env에 설정된 토큰, 없으면 빈 문자열
-  final TextEditingController _tokenController = TextEditingController(text: '');
-  final TextEditingController _amountController =
-  TextEditingController(text: '');
-
-  @override
-  void initState() {
-    super.initState();
-    // .env 토큰 자동 세팅 (필요시)
-    final envToken = dotenv.env['API_TOKEN'] ?? '';
-    if (envToken.isNotEmpty) {
-      _tokenController.text = envToken;
-    }
-  }
-
-  // 3회 재시도 로직
-  Future<Map<String, dynamic>?> tryTransferWithRetry({
-    required String token,
-    required String receiverAddr,
-    required String amount,
-  }) async {
-    const int maxRetries = 3;
-    int attempt = 0;
-
-    while (attempt < maxRetries) {
-      final result = await apiService.transferToken(
-        chainName: widget.chainName,
-        contractAddress: widget.contractAddress,
-        sender: widget.senderAddress,
-        senderPkey: widget.senderPrivateKey,
-        receiver: receiverAddr,
-        amount: amount,
-      );
-
-      if (result != null && result['state'] == 'OK') {
-        return result;
-      }
-
-      attempt++;
-      await Future.delayed(const Duration(seconds: 3));
-    }
-
-    return null;
-  }
-
-  // 동시 최대 concurrency개씩 처리하는 병렬 전송 구현
-  Future<void> _autoTransferTokens(String token, String amount) async {
-    final accountsSnapshot = await FirebaseFirestore.instance
-        .collection('account')
-        .limit(100)
-        .get();
-
-    final docs = accountsSnapshot.docs;
-    const concurrency = 1; // 동시 전송 제한
-    int running = 0;
-    int index = 0;
-
-    final completers = <Future>[];
-
-    Future<void> runNext() async {
-      if (index >= docs.length) return;
-
-      final doc = docs[index];
-      index++;
-      running++;
-
-      final data = doc.data();
-      final receiverAddr = data['address'];
-      if (receiverAddr == null || receiverAddr.isEmpty) {
-        running--;
-        runNext();
-        return;
-      }
-
-      final result = await tryTransferWithRetry(
-        token: token,
-        receiverAddr: receiverAddr,
-        amount: amount,
-      );
-
-      await FirebaseFirestore.instance.collection('transfer').add({
-        'sender': widget.senderAddress,
-        'receiver': receiverAddr,
-        'amount': amount,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': result != null && result['state'] == 'OK' ? 'success' : 'fail',
-        'response': result ?? {},
-      });
-
-      running--;
-      runNext();
-    }
-
-    // concurrency 만큼 초기 실행
-    for (int i = 0; i < concurrency && i < docs.length; i++) {
-      runNext();
-    }
-
-    // 모든 작업 완료 대기
-    while (running > 0) {
-      await Future.delayed(const Duration(milliseconds: 200));
-    }
-  }
-
-  void _startTransferAndGoToStatusScreen() {
-    // .env API_TOKEN을 기본값으로 쓰고, 입력값은 덮어쓰기 가능
-    final token = _tokenController.text.trim();
-    final amount = _amountController.text.trim();
-
-    if (token.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('토큰 ID를 입력하세요')),
-      );
-      return;
-    }
-    if (amount.isEmpty || int.tryParse(amount) == null || int.parse(amount) <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('유효한 토큰 수량을 입력하세요')),
-      );
-      return;
-    }
-
+  Future<void> _transferToken() async {
     setState(() {
       _isLoading = true;
-      _statusMessage = "전송 시작, 상태 화면으로 이동합니다...";
+      _error = null;
     });
 
-    // 전송 백그라운드 실행
-    _autoTransferTokens(token, amount).whenComplete(() {
+    final contract_address = _contractAdressController.text.trim();
+    final sender = _senderController.text.trim();
+    final sender_private_key = _senderPrivatekeyController.text.trim();
+    final receiver = _recieverController.text.trim();
+    final amount = _amountController.text.trim();
+
+
+    try{
+      final api = ApiService();
+      final result = await api.fetchTransferToken(contract_address: contract_address,
+          sender: sender,
+          sender_private_key: sender_private_key,
+          receiver: receiver,
+          amount: amount);
+
+      if (result != null) {
+        print('토큰 전송 성공 결과: $result');
+        setState(() {
+          _transferTokenData = result;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _error = 'error';
+        });
+      }
+    }
+    catch(e, stacktrace){
+      print('토큰 전송 중 예외 발생: $e');
+      print('스택 트레이스: $stacktrace');
       setState(() {
+        _error = '네트워크 오류가 발생했습니다.';
         _isLoading = false;
-        _statusMessage = "전송 작업 완료";
       });
-    });
 
-    // 전송 상태 화면으로 이동 (전송 시작하자마자)
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AccountStatusScreen(
-          tokenId: token,
-          chainName: widget.chainName,
-          contractAddress: widget.contractAddress,
-          senderAddress: widget.senderAddress,
-          senderPrivateKey: widget.senderPrivateKey,
-          mode: AccountStatusMode.batch,
+    }
+  }
+
+  //⬇️ 공통 TextField 디자인
+  Widget _buildInput(TextEditingController controller, String label,
+      IconData icon,
+      {bool isNumber = false, bool obscureText = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextField(
+        controller: controller,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon, color: Colors.indigoAccent),
+          labelText: label,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+              vertical: 18, horizontal: 16),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xAB6DA0FE)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Colors.indigoAccent),
+          ),
         ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _tokenController.dispose();
-    super.dispose();
+  Widget _buildActionButton() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: _isLoading ? null : _transferToken,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigoAccent,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(160, 50),
+            ),
+            icon: _isLoading
+                ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                  color: Colors.white, strokeWidth: 2),
+            )
+                : const Icon(Icons.add_circle_outline),
+            label: Text(_isLoading ? '처리중...' : '토큰 생성 및 발행'),
+          ),
+        ),
+
+      ],
+    );
   }
 
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('자동 토큰 전송'),
+        title: const Text('토큰 전송'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.indigoAccent,
       ),
-      backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(top: 150, left: 600, right: 600),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            TextField(
-              controller: _tokenController,
-              decoration: InputDecoration(
-                labelText: '토큰 ID 입력',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                prefixIcon: const Icon(Icons.vpn_key, color: Colors.indigoAccent),
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: '전송할 토큰 수량 입력',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                prefixIcon: const Icon(Icons.numbers, color: Colors.indigoAccent),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _startTransferAndGoToStatusScreen,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigoAccent,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(200, 50),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-              )
-                  : const Text('자동 토큰 전송 시작'),
-            ),
+            _buildInput(
+                _contractAdressController, '컨트랙트 주소', Icons.contact_page),
+            _buildInput(_senderController, '보내는 사람', Icons.person),
+            _buildInput(_senderPrivatekeyController, '개인키', Icons.key),
+            _buildInput(_recieverController, '받는 사람', Icons.person),
+            _buildInput(_amountController, '수량', Icons.monetization_on),
             const SizedBox(height: 30),
-            Text(
-              _statusMessage,
-              style: TextStyle(
-                color: _statusMessage.contains('완료') ? Colors.green : Colors.red,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+            _buildActionButton(),
+            const SizedBox(height: 24),
+            if (_transferTokenData != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Date: ${_transferTokenData!['Date'] ?? '-'}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  Text(
+                    'Sender: ${_transferTokenData!['Sender'] ?? '-'}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  Text(
+                    'Receiver: ${_transferTokenData!['Receiver'] ?? '-'}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  Text(
+                    'Amount: ${_transferTokenData!['Amount'] ?? '-'}',
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),

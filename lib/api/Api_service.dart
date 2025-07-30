@@ -3,14 +3,12 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
-  // .env에서 값 읽어오기 (null일 경우 대비 필수 환경변수로 설정)
-  static final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'https://www.daegu.go.kr/daeguchain/v2/mitum';
-  static final String token = dotenv.env['API_TOKEN'] ?? 'ddfe8284753b0bdd2aff8249b09157b7';
-  static final String chainName = dotenv.env['CHAIN_NAME'] ?? 'dchain';
+  static final String baseUrl = 'http://220.149.235.79:5000';
+
 
   // 계정 생성 API
   Future<String?> fetchKeyPair() async {
-    final url = Uri.parse('http://220.149.235.79:5000/acc/create'); // 실제 API 경로
+    final url = Uri.parse('$baseUrl/acc/create'); // 실제 API 경로
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -27,7 +25,7 @@ class ApiService {
 
   //계정 리스트 api
   Future<String?> fetchAccountList() async {
-    final url = Uri.parse('http://220.149.235.79:5000/acc/get_list'); // 실제 API 경로
+    final url = Uri.parse('$baseUrl/acc/get_list'); // 실제 API 경로
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -47,7 +45,7 @@ class ApiService {
     required String ownerAddr,
   }) async {
     final url = Uri.parse(
-        'http://220.149.235.79:5000/acc/get_private_key'); // 실제 API 경로
+        '$baseUrl/acc/get_private_key'); // 실제 API 경로
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -68,7 +66,7 @@ class ApiService {
     required String ownerAddr,
 }
       ) async {
-    final url = Uri.parse('http://220.149.235.79:5000/acc/get_public_key');
+    final url = Uri.parse('$baseUrl/acc/get_public_key');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -82,21 +80,18 @@ class ApiService {
 
 
   // 토큰 전송
-  Future<Map<String, dynamic>?> transferToken({
-    required String chainName,
-    required String contractAddress,
+  Future<Map<String, dynamic>?> fetchTransferToken({
+    required String contract_address,
     required String sender,
-    required String senderPkey,
+    required String sender_private_key,
     required String receiver,
     required String amount,
   }) async {
     final url = Uri.parse('$baseUrl/token/transfer');
     final body = jsonEncode({
-      "token": token,
-      "chain": chainName,
-      "cont_addr": contractAddress,
+      "contract_address": contract_address,
       "sender": sender,
-      "sender_pkey": senderPkey,
+      "sender_private_key": sender_private_key,
       "receiver": receiver,
       "amount": amount,
     });
@@ -106,16 +101,55 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: body,
     );
-
-    print('[TOKEN TRANSFER] status: ${response.statusCode}');
-    print('[TOKEN TRANSFER] body: ${response.body}');
+    print('응답 body: ${response.body}');
+    final json = jsonDecode(response.body);
+    print('디코딩 결과 타입: ${json.runtimeType}');
+    print('디코딩 결과 내용: $json');
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
-      if (json['state'] == 'OK') return json;
-      print('전송 실패: ${json['msg']}');
+      print('토큰 전송 성공!');
+      return json;
     } else {
-      print('HTTP 에러: ${response.statusCode}');
+      print('HTTP 오류: 상태 코드 ${response.statusCode}');
+      print('응답 내용: ${response.body}');
+      throw Exception('HTTP 오류: 상태 코드 ${response.statusCode}');
+    }
+  }
+
+  //계좌 리스트
+  Future<List<List<dynamic>>?> fetchBalanceList({
+    required String contract_address,
+  }) async {
+    final url = Uri.parse('http://220.149.235.79:5000/token/balance_list');
+    final body = jsonEncode({
+      "contract_address": contract_address,
+    });
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    print('응답 body: ${response.body}');
+    final json = jsonDecode(response.body);
+    print('디코딩 결과 타입: ${json.runtimeType}');
+    print('디코딩 결과 내용: $json');
+
+
+    if (response.statusCode == 200) {
+      if (json is List) {
+        // 내부가 List<dynamic>인 리스트인지 확인 후 변환
+        if (json.isNotEmpty && json[0] is List) {
+          // JSON 배열을 List<List<dynamic>>로 변환
+          return List<List<dynamic>>.from(
+              json.map((item) => List<dynamic>.from(item)));
+        } else {
+          // 혹시 2차원 배열이 아닌 경우라도 List<List<dynamic>> 형태로 맞춤
+          return [List<dynamic>.from(json)];
+        }
+      }
     }
 
     return null;
@@ -123,19 +157,12 @@ class ApiService {
 
   // 토큰 생성
   Future<Map<String, dynamic>?> fetchTokenCreate({
-    required String chainName,
-    required String ownerAddr,
-    required String ownerPkey,
     required String tokenName,
     required String tokenSymbol,
     required String supply,
   }) async {
     final url = Uri.parse('$baseUrl/token/create');
     final body = jsonEncode({
-      "token": token,
-      "chain": chainName,
-      "owner_addr": ownerAddr,
-      "owner_pkey": ownerPkey,
       "token_name": tokenName,
       "token_symbol": tokenSymbol,
       "decimals": 9,
@@ -147,39 +174,25 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: body,
     );
+    final json = jsonDecode(response.body);
+    return json;
 
-    print('📥 API 응답 상태코드: ${response.statusCode}');
-    print('📥 API 응답 본문: ${response.body}');
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      return {
-        'error': '요청 실패',
-        'status': response.statusCode,
-        'body': response.body,
-      };
-    }
   }
 
-  // 토큰 발행하기
-  Future<Map<String, dynamic>?> fetchTokenMint({
-    required String chainName,
-    required String contractAddress,
-    required String owner,
-    required String privateKey,
-    required String receiverAddress,
+  //토큰 회수
+
+  Future<Map<String, dynamic>?> fetchTokenRetrieve({
+    required String contract_address,
+    required String holder,
+    required String receiver,
     required String amount,
   }) async {
-    final url = Uri.parse('$baseUrl/token/mint');
+    final url = Uri.parse('$baseUrl/token/retrieve');
     final body = jsonEncode({
-      "token": token,
-      "chain": chainName,
-      "cont_addr": contractAddress,
-      "owner": owner,
-      "owner_pkey": privateKey,
-      "receiver": receiverAddress,
-      "amount": amount,
+      "contract_address":contract_address,
+      "holder":holder,
+      "receiver":receiver,
+      "amount":amount,
     });
 
     final response = await http.post(
@@ -187,33 +200,37 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: body,
     );
+    final json = jsonDecode(response.body);
+    return json;
 
-    print('📤 Mint 요청 바디: $body');
-    print('📥 상태코드: ${response.statusCode}');
-    print('📥 본문: ${response.body}');
+  }
+
+
+  //관리자 pkey
+  Future<String?> fetchAdminPkey() async {
+    final url = Uri.parse('$baseUrl/acc/get_owner_info'); // 실제 API 경로
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+      }),
+    );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return response.body; // JSON 문자열 그대로 리턴
     } else {
-      return {
-        'error': true,
-        'status': response.statusCode,
-        'body': response.body,
-      };
+      return null;
     }
   }
 
   // 계좌 잔액 조회
   Future<String?> fetchTokenBalance({
-    required String chainName,
-    required String contractAddress,
+
     required String accountAddress,
   }) async {
     final url = Uri.parse('$baseUrl/token/balance');
     final body = jsonEncode({
-      "token": token,
-      "chain": chainName,
-      "cont_addr": contractAddress,
+
       "addr": accountAddress,
     });
 
@@ -225,29 +242,20 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
-      print('📥 응답 데이터: $json');
+      return json;
 
-      final balance = json['data']?['balance'];
-      if (balance != null) {
-        return balance.toString();
-      }
     }
 
     return null;
   }
 
   Future<Map<String, dynamic>?> fetchTokenBurn({
-    required String chainName,
-    required String contractAddress,
     required String holderAddr,
     required String holderPkey,
     required String amount,
   }) async {
     final url = Uri.parse('$baseUrl/token/burn');
     final body = jsonEncode({
-      "token": token,  // API 인증 토큰 (dotenv에서 읽은 전역변수)
-      "chain": chainName,
-      "cont_addr": contractAddress,
       "holder": holderAddr,
       "holder_pkey": holderPkey,
       "amount": amount,
@@ -259,17 +267,9 @@ class ApiService {
       body: body,
     );
 
-    print('📥 API 응답 상태코드: ${response.statusCode}');
-    print('📥 API 응답 본문: ${response.body}');
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
-    } else {
-      return {
-        'error': '요청 실패',
-        'status': response.statusCode,
-        'body': response.body,
-      };
     }
   }
 

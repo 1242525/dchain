@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import '../api/SharedPreference.dart';
 import '../screen/Token_create_screen.dart';
 import 'account_list_screen.dart';
-import '../screen/account_management_screen.dart';
-import '../screen/token_balance.dart';
 import '../screen/account_create.dart';
-import '../screen/token_burn_screen.dart';
-import '../screen/privateKey_screen.dart';
 import '../screen/publickey_screen.dart';
+import '../screen/transfer_tokenAll_screen.dart';
+import '../screen/balance_list.dart';
+import '../screen/token_retrieve.dart';
+import '../screen/owner_privatekey.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -52,35 +51,7 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 20),
-              _buildHomeButton(
-                context,
-                text: '토큰 1:1 전송',
-                icon: Icons.send,
-                onPressed: () async {
-                  final tokenId = await PrefsHelper.getTokenId();
-                  final contractAddress = await PrefsHelper.getContractAddress();
-                  final chainName = await PrefsHelper.getChainName();
 
-                  if (tokenId == null || contractAddress == null || chainName == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('먼저 토큰을 생성해주세요')),
-                    );
-                    return;
-                  }
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AccountManagementScreen(
-                        token: tokenId,
-                        chainName: chainName,
-                        contractAddress: contractAddress,
-                      ),
-                    ),
-                  );
-                },
-              ),
               const SizedBox(height: 20),
               _buildHomeButton(
                 context,
@@ -111,108 +82,68 @@ class HomeScreen extends StatelessWidget {
                   );
                 },
               ),
-
-              /*
               const SizedBox(height: 20),
               _buildHomeButton(
                 context,
-                text: '계정 리스트 + 일괄 지급',
-                icon: Icons.group,
+                text: '토큰 전송하기',
+                icon: Icons.money,
                 onPressed: () async {
-                  final tokenId = await PrefsHelper.getTokenId();
-                  final contract = await PrefsHelper.getContractAddress();
-                  final chain = await PrefsHelper.getChainName();
-
-                  if (tokenId == null || contract == null || chain == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('먼저 토큰을 생성해주세요')),
-                    );
-                    return;
-                  }
-
+                  // 필요하다면 async 작업 수행
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => AccountListScreen(
-                        token: tokenId,
-                        chainName: chain,
-                        contractAddress: contract,
-                      ),
+                      builder: (_) => TokenTransferScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildHomeButton(
+                context,
+                text: '잔액 조회하기',
+                icon: Icons.list,
+                onPressed: () async {
+                  // 필요하다면 async 작업 수행
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BalanceList(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildHomeButton(
+                context,
+                text: '토큰 회수하기',
+                icon: Icons.reset_tv,
+                onPressed: () async {
+                  // 필요하다면 async 작업 수행
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TokenRetrieve(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildHomeButton(
+                context,
+                text: '오너 개인키',
+                icon: Icons.key,
+                onPressed: () async {
+                  // 필요하다면 async 작업 수행
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OwnerPrivatekey(),
                     ),
                   );
                 },
               ),
 
 
-              const SizedBox(height: 20),
-              _buildHomeButton(
-                context,
-                text: '토큰 소각하기',
-                icon: Icons.group,
-                onPressed: () async {
-                  final tokenId = await PrefsHelper.getTokenId();
-                  final contract = await PrefsHelper.getContractAddress();
-                  final chain = await PrefsHelper.getChainName();
-
-                  if (tokenId == null || contract == null || chain == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('먼저 토큰을 생성해주세요')),
-                    );
-                    return;
-                  }
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AccountListScreen(
-                        token: tokenId,
-                        chainName: chain,
-                        contractAddress: contract,
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-               */
-
-              const SizedBox(height: 20),
-              _buildHomeButton(
-                context,
-                text: '계정 잔액 보기',
-                icon: Icons.list_alt,
-                onPressed: () async {
-                  final tokenId = await PrefsHelper.getTokenId();
-                  final contractAddress = await PrefsHelper.getContractAddress();
-                  final chainName = await PrefsHelper.getChainName();
-
-                  // 필요한 경우 sender 주소 등도 가져오기
-                  final senderAddress = 'your_sender_address';       // 실제 값으로 대체
-                  final senderPrivateKey = 'your_private_key';       // 실제 값으로 대체
-
-                  if (tokenId == null || contractAddress == null || chainName == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('먼저 토큰을 생성해주세요')),
-                    );
-                    return;
-                  }
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AccountStatusScreen(
-                        tokenId: tokenId,
-                        chainName: chainName,
-                        contractAddress: contractAddress,
-                        senderAddress: senderAddress,
-                        senderPrivateKey: senderPrivateKey,
-                        mode: AccountStatusMode.batch,
-
-                      ),
-                    ),
-                  );
-                },
-              ),
             ],
           ),
         ),

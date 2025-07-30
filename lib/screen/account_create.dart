@@ -47,23 +47,6 @@ class _SignupScreenState extends State<SignupScreen> {
       if (result != null) {
         try {
           final Map<String, dynamic> jsonMap = json.decode(result);
-          if (jsonMap['state'] == 'OK' && jsonMap['data']?['key_pair'] != null) {
-            _keyPairData = Map<String, dynamic>.from(jsonMap['data']['key_pair']);
-
-            // 여기서 JSON 파일 다운로드 실행
-            final jsonString = json.encode(_keyPairData);
-            final bytes = utf8.encode(jsonString);
-            final blob = html.Blob([bytes], 'application/json');
-            final url = html.Url.createObjectUrlFromBlob(blob);
-            final anchor = html.AnchorElement(href: url)
-              ..setAttribute('download',
-                  'identity_${DateTime.now().toIso8601String()}.json')
-              ..click();
-            html.Url.revokeObjectUrl(url);
-
-          } else {
-            _error = '';
-          }
         } catch (e) {
           _error = 'JSON 파싱 오류: $e';
         }
